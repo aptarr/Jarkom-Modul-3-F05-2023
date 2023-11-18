@@ -236,6 +236,463 @@ Untuk konfigurasinya bisa menambahkan allow untuk IP tersebut kemudian deny untu
 Maka pada saat IP selain IP yang ditentukan mengakses web akan memunculkan 403 Forbidden.  
 ![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/114988957/cf961019-a019-445e-a81e-c75cb9eb54b4)  
 
+## Soal 13
+pada soal diminta agar semua data yang diperlukan, diatur pada Denken dan harus dapat diakses oleh Frieren, Flamme, dan Fern. maka pada database server kita perlu menambahkan user berdasarkan IP seprti berikut
+```
+    CREATE USER 'kelompokf05'@'10.54.2.1' IDENTIFIED BY 'passwordf05';
+    CREATE USER 'kelompokf05'@'10.54.4.1' IDENTIFIED BY 'passwordf05';
+    CREATE USER 'kelompokf05'@'10.54.4.2' IDENTIFIED BY 'passwordf05';
+    CREATE USER 'kelompokf05'@'10.54.4.3' IDENTIFIED BY 'passwordf05';
+    CREATE DATABASE dbkelompokf05;
+    GRANT ALL PRIVILEGES ON *.* TO 'kelompokf05'@'10.54.2.1';
+    GRANT ALL PRIVILEGES ON *.* TO 'kelompokf05'@'10.54.4.1';
+    GRANT ALL PRIVILEGES ON *.* TO 'kelompokf05'@'10.54.4.2';
+    GRANT ALL PRIVILEGES ON *.* TO 'kelompokf05'@'10.54.4.3';
+    CREATE USER 'kelompokf05'@'localhost' IDENTIFIED BY 'passwordf05';
+    GRANT ALL PRIVILEGES ON *.* TO 'kelompokf05'@'localhost';
+    FLUSH PRIVILEGES;
+```
+jangan lupa menambahkan ini pada file ```/etc/mysql/my.cnf ``` pada database server agar dapat diakses oleh node client
+```
+[mysqld]
+skip-networking=0
+skip-bind-address
+```
+dan lakukan ```service mysql restart```. untuk mengecek apakah berhasil tercapai permintaan nomor 13 run command berikut ```mariadb --host=10.54.2.1 --port=3306 --user=kelompokf05 --password``` dan coba show database sehingga hasil seperti berikut
 
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/a1750d5f-3db3-4608-a33c-349ac08ed1ea)
+
+## Soal 14
+pada soal diminta untuk melakukan instalasi laravel sesuai dengan github maka hanya perlu menjalankan script berikut
+```
+apt-get update
+apt-get install -y lsb-release ca-certificates apt-transport-https software-properties-common gnupg2
+
+curl -sSLo /usr/share/keyrings/deb.sury.org-php.gpg https://packages.sury.org/php/apt.gpg
+sh -c 'echo "deb [signed-by=/usr/share/keyrings/deb.sury.org-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/php.list'
+
+apt-get update
+apt-get install php8.0-mbstring php8.0-xml php8.0-cli php8.0-common php8.0-intl php8.0-opcache php8.0-readline php8.0-mysql php8.0-fpm php8.0-curl unzip wget -y
+apt-get install nginx -y
+
+wget https://getcomposer.org/download/2.0.13/composer.phar
+chmod +x composer.phar
+mv composer.phar /usr/bin/composer
+
+apt-get install git -y
+
+cd /var/www/
+git clone https://github.com/martuafernando/laravel-praktikum-jarkom.git
+cd laravel-praktikum-jarkom
+composer update
+
+echo "APP_NAME=Laravel
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost
+
+LOG_CHANNEL=stack
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=debug
+
+DB_CONNECTION=mysql
+DB_HOST=10.54.2.1
+DB_PORT=3306
+DB_DATABASE=dbkelompokf05
+DB_USERNAME=kelompokf05
+DB_PASSWORD=passwordf05
+
+BROADCAST_DRIVER=log
+CACHE_DRIVER=file
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+
+MEMCACHED_HOST=127.0.0.1
+
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+MAIL_MAILER=smtp
+MAIL_HOST=mailpit
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+MAIL_FROM_ADDRESS=\"hello@example.com\"
+MAIL_FROM_NAME=\"\${APP_NAME}\"
+
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=us-east-1
+AWS_BUCKET=
+AWS_USE_PATH_STYLE_ENDPOINT=false
+
+PUSHER_APP_ID=
+PUSHER_APP_KEY=
+PUSHER_APP_SECRET=
+PUSHER_HOST=
+PUSHER_PORT=443
+PUSHER_SCHEME=https
+PUSHER_APP_CLUSTER=mt1
+
+VITE_PUSHER_APP_KEY=\"\${PUSHER_APP_KEY}\"
+VITE_PUSHER_HOST=\"\${PUSHER_HOST}\"
+VITE_PUSHER_PORT=\"\${PUSHER_PORT}\"
+VITE_PUSHER_SCHEME=\"\${PUSHER_SCHEME}\"
+VITE_PUSHER_APP_CLUSTER=\"\${PUSHER_APP_CLUSTER}\"
+" > .env
+
+php artisan migrate:fresh
+php artisan db:seed --class=AiringsTableSeeder
+php artisan key:generate
+php artisan jwt:secret
+
+echo "
+server {
+
+    listen 80;
+
+    root /var/www/laravel-praktikum-jarkom/public;
+
+    index index.php index.html index.htm;
+    server_name _;
+
+    location / {
+            try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    # pass PHP scripts to FastCGI server
+    location ~ \.php\$ {
+    include snippets/fastcgi-php.conf;
+    fastcgi_pass unix:/var/run/php/php8.0-fpm.sock;
+    }
+
+location ~ /\.ht {
+            deny all;
+    }
+
+    error_log /var/log/nginx/implementasi_error.log;
+    access_log /var/log/nginx/implementasi_access.log;
+}" > /etc/nginx/sites-available/implementasi
+
+ln -s /etc/nginx/sites-available/implementasi /etc/nginx/sites-enabled/
+rm -rf /etc/nginx/sites-enabled/default
+chown -R www-data.www-data /var/www/laravel-praktikum-jarkom/storage
+service php8.0-fpm start
+service nginx restart
+```
+
+pada script tersebut sebelum melakukan instalasi git script tersebut melakukan instalasi PHP 8.0 kemudian dilanjutkan melakukan konfigurasi dengan file laravel, dimana untuk melakukan pengetesan hanya perlu jalankan command berikut ```lynx http://10.54.4.1``` tergantung worker mana yang diping atau ```lynx http://riegel.canyon.f05.com``` dimana karena worker ini sudah diset pada load balancer dengan nama DNS yang sudah ditentukan. berikut hasil jika berhasil melakukan konfigurasi laravel:
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/f83e3321-8e5a-4393-b38d-2846a750f02d)
+
+hasil respon saat melakukan curl:
+
+http://10.54.4.1/api/auth/register
+
+command:
+```curl -s -X POST -H "Content-Type: application/json" -d '{"username": "Camille", "password": "c4aa45b6-4327-43dd-aed9-301f396267b1"}' http://10.54.4.2/auth/register```
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/d6788786-3ff5-449d-b280-5b7a0b6ac80c)
+
+http://10.54.4.1/api/auth/login 
+
+command:
+```curl -s -X POST -H "Content-Type: application/json" -d '{"username": "Camille", "password": "c4aa45b6-4327-43dd-aed9-301f396267b1"}' http://10.54.4.2/auth/login```
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/e1325910-95cc-40dc-842d-4a6014270d7e)
+
+http://10.54.4.1/api/me
+
+command:
+```curl -X GET -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vMTAuNTQuNC4yL2FwaS9hdXRoL2xvZ2luIiwiaWF0IjoxNzAwMzM3MTAxLCJleHAiOjE3MDAzNDA3MDEsIm5iZiI6MTcwMDMzNzEwMSwianRpIjoiTzI0TDhqSkpONWF1dEFXYyIsInN1YiI6IjEiLCJwcnYiOiIyM2JkNWM4OTQ5ZjYwMGFkYjM5ZTcwMWM0MDA4NzJkYjdhNTk3NmY3In0.8j5i00O7spfAwBB8EgejQkb0L_d0TaYdoUS_NL5KK7c" -H "Content-Type: application/json" http://10.54.4.2/api/me```
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/664269f6-c288-4007-854b-8dd66b38b55a)
+
+## Soal 15
+pada soal diminta untuk melakukan bench marck dimana hanya perlu menajalankan command ini:
+
+POST /auth/register
+
+```
+ab -n 100 -c 10 -p <(curl -s -X POST -H "Content-Type: application/json" -d '{"username": "Camille", "password": "c4aa45b6-4327-43dd-aed9-301f396267b1"}' http://10.54.4.2/auth/register) -T "application/json" http://10.54.4.2/auth/register
+```
+
+hasil:
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/9225cd3b-5a56-4430-b8d7-e91cafeda7d2)
+
+## Soal 16
+pada soal diminta untuk melakukan bench marck dimana hanya perlu menajalankan command ini:
+
+POST /auth/login 
+
+```
+ab -n 100 -c 10 -p <(curl -s -X POST -H "Content-Type: application/json" -d '{"username": "Camille", "password": "c4aa45b6-4327-43dd-aed9-301f396267b1"}' http://10.54.4.2/auth/login) -T "application/json" http://10.54.4.2/auth/login
+```
+
+hasil:
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/7a9ee673-d1ad-4274-8437-26578bf148ad)
+
+## Soal 17
+pada soal diminta untuk melakukan bench marck dimana hanya perlu menajalankan command ini:
+
+GET /me 
+
+```
+ab -n 100 -c 10 -p <(curl -X GET -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vMTAuNTQuNC4yL2FwaS9hdXRoL2xvZ2luIiwiaWF0IjoxNzAwMzM3MTAxLCJleHAiOjE3MDAzNDA3MDEsIm5iZiI6MTcwMDMzNzEwMSwianRpIjoiTzI0TDhqSkpONWF1dEFXYyIsInN1YiI6IjEiLCJwcnYiOiIyM2JkNWM4OTQ5ZjYwMGFkYjM5ZTcwMWM0MDA4NzJkYjdhNTk3NmY3In0.8j5i00O7spfAwBB8EgejQkb0L_d0TaYdoUS_NL5KK7c" -H "Content-Type: application/json" http://10.54.4.2/api/me) -T "application/json" http://10.54.4.2/api/me
+```
+
+hasil:
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/8932b5bf-d788-4e1b-958e-aa0c378b667e)
+
+## Soal 18
+pada soal diminta untuk memastikan ketiganya bekerja sama secara adil untuk mengatur Riegel Channel maka implementasikan Proxy Bind pada Eisen untuk mengaitkan IP dari Frieren, Flamme, dan Fern sehingga hanya perlu menambahkan line berikut pada ```/etc/nginx/sites-available/lb-jarkom```
+
+```
+    location /frieren/ {
+        # Proxy Bind configuration for frieren
+        proxy_bind 10.54.2.2; # IP frieren
+        proxy_pass http://10.54.4.1/index.php;
+    }
+
+    location /fiamme/ {
+        # Proxy Bind configuration for Fiamme
+        proxy_bind 10.54.2.2; # IP Fiamme
+        proxy_pass http://10.54.4.2/index.php;
+    }
+
+    location /fern/ {
+        # Proxy Bind configuration for Fern
+        proxy_bind 10.54.2.2; # IP Fern
+        proxy_pass http://10.54.4.3/index.php;
+    }
+```
+
+hasil kurang lebih seperti berikut setelah menjalankan ```lynx http://riegel.canyon.f05.com/fiamme```:
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/0ef9c591-00c8-428c-8f31-2787e9a1e740)
+
+## Soal 19
+pada soal diminta untuk melakukan bench marck dimana hanya perlu menajalankan command ini sebanyak 3 kali:
+
+```
+    ab -n 100 -c 10 http://riegel.canyon.f05.com/
+```
+
+tetapi sebelum melakukan hal terserbut kita perlu set pada setiap worker dengan menjalankan script berikut:
+
+freieren
+
+```
+echo '[www]
+user = eisen_user
+group = eisen_user
+listen = /run/php/php8.0-fpm-einen.sock
+listen.owner = www-data
+listen.group = www-data
+php_admin_value[disable_functions] = exec,passthru,shell_exec,system
+php_admin_flag[allow_url_fopen] = off
+
+; Choose how the process manager will control the number of child processes.
+
+pm = dynamic
+pm.max_children = 25
+pm.start_servers = 5
+pm.min_spare_servers = 10
+pm.max_spare_servers = 10' > /etc/php/8.0/fpm/pool.d/eisen.conf
+
+groupadd eisen_user
+useradd -g eisen_user eisen_user
+
+service php8.0-fpm restart
+
+echo "
+server {
+
+    listen 80;
+
+    root /var/www/laravel-praktikum-jarkom/public;
+
+    index index.php index.html index.htm;
+    server_name _;
+
+    location / {
+            try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    # pass PHP scripts to FastCGI server
+    location ~ \.php\$ {
+    include snippets/fastcgi-php.conf;
+    fastcgi_pass unix:/run/php/php8.0-fpm-einen.sock;
+    }
+
+location ~ /\.ht {
+            deny all;
+    }
+
+    error_log /var/log/nginx/implementasi_error.log;
+    access_log /var/log/nginx/implementasi_access.log;
+}" > /etc/nginx/sites-available/implementasi
+
+service nginx restart
+```
+
+flamme
+
+```
+echo '[www]
+user = eisen_user
+group = eisen_user
+listen = /run/php/php8.0-fpm-einen.sock
+listen.owner = www-data
+listen.group = www-data
+php_admin_value[disable_functions] = exec,passthru,shell_exec,system
+php_admin_flag[allow_url_fopen] = off
+
+; Choose how the process manager will control the number of child processes.
+
+pm = dynamic
+pm.max_children = 90
+pm.start_servers = 5
+pm.min_spare_servers = 10
+pm.max_spare_servers = 20' > /etc/php/8.0/fpm/pool.d/eisen.conf
+
+groupadd eisen_user
+useradd -g eisen_user eisen_user
+
+service php8.0-fpm restart
+
+echo "
+server {
+
+    listen 80;
+
+    root /var/www/laravel-praktikum-jarkom/public;
+
+    index index.php index.html index.htm;
+    server_name _;
+
+    location / {
+            try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    # pass PHP scripts to FastCGI server
+    location ~ \.php\$ {
+    include snippets/fastcgi-php.conf;
+    fastcgi_pass unix:/run/php/php8.0-fpm-einen.sock;
+    }
+
+location ~ /\.ht {
+            deny all;
+    }
+
+    error_log /var/log/nginx/implementasi_error.log;
+    access_log /var/log/nginx/implementasi_access.log;
+}" > /etc/nginx/sites-available/implementasi
+
+service nginx restart
+```
+
+freieren
+
+```
+echo '[www]
+user = eisen_user
+group = eisen_user
+listen = /run/php/php8.0-fpm-einen.sock
+listen.owner = www-data
+listen.group = www-data
+php_admin_value[disable_functions] = exec,passthru,shell_exec,system
+php_admin_flag[allow_url_fopen] = off
+
+; Choose how the process manager will control the number of child processes.
+
+pm = dynamic
+pm.max_children = 10
+pm.start_servers = 5
+pm.min_spare_servers = 5
+pm.max_spare_servers = 10' > /etc/php/8.0/fpm/pool.d/eisen.conf
+
+groupadd eisen_user
+useradd -g eisen_user eisen_user
+
+service php8.0-fpm restart
+
+echo "
+server {
+
+    listen 80;
+
+    root /var/www/laravel-praktikum-jarkom/public;
+
+    index index.php index.html index.htm;
+    server_name _;
+
+    location / {
+            try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    # pass PHP scripts to FastCGI server
+    location ~ \.php\$ {
+    include snippets/fastcgi-php.conf;
+    fastcgi_pass unix:/var/run/php/php8.0-fpm-einen.sock;
+    }
+
+location ~ /\.ht {
+            deny all;
+    }
+
+    error_log /var/log/nginx/implementasi_error.log;
+    access_log /var/log/nginx/implementasi_access.log;
+}" > /etc/nginx/sites-available/implementasi
+
+service nginx restart
+```
+
+HASIL:
+
+Percobaan 1
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/894aca65-baae-4ed0-954d-c7b14bd51ba0)
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/c79d35b7-c3b2-46c0-9466-1ad8e037e70f)
+
+Percobaan 2
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/cdef0099-cd6b-4769-8f6f-ce63e84e1b10)
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/81b7bcf0-ac6b-445d-afe9-2291f19470dc)
+
+Percobaan 3
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/cddf67a3-c545-4c29-bc84-3b30b6f031f5)
+
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/0fa466a4-0ae0-4325-b778-0009a2743d5b)
+
+## Soal 20
+pada soal diminta untuk melakukan bench marck dimana hanya perlu menajalankan command ini:
+```
+ab -n 100 -c 10 http://riegel.canyon.f05.com/
+```
+tetapi sebelum melakukan hal terserbut kita perlu menambahkan line berikut pada file ```/etc/nginx/sites-available/lb-jarkom```:
+
+```
+upstream laravel_backend  {
+    least_conn;
+    server 10.54.4.1; #IP Frieren
+    server 10.54.4.2; #IP Fiamme
+    server 10.54.4.3; #IP Fern
+}
+```
+
+HASIL:
+![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/1a19ca39-e39b-420f-b60d-48b7b1e742a7)
  
 
