@@ -693,6 +693,7 @@ upstream laravel_backend  {
 ```
 
 HASIL:
+
 ![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/1a19ca39-e39b-420f-b60d-48b7b1e742a7)
  
 
