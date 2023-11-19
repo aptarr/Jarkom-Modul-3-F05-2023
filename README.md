@@ -414,12 +414,12 @@ command:
 ![image](https://github.com/aptarr/Jarkom-Modul-3-F05-2023/assets/116022017/664269f6-c288-4007-854b-8dd66b38b55a)
 
 ## Soal 15
-pada soal diminta untuk melakukan bench marck dimana hanya perlu menajalankan command ini:
+pada soal diminta untuk melakukan bench marck dimana hanya perlu menajalankan command ini (untuk file register_data.json sudah saya lampirkan diatas):
 
 POST /auth/register
 
 ```
-ab -n 100 -c 10 -p <(curl -s -X POST -H "Content-Type: application/json" -d '{"username": "Camille", "password": "c4aa45b6-4327-43dd-aed9-301f396267b1"}' http://10.54.4.2/auth/register) -T "application/json" http://10.54.4.2/auth/register
+ab -n 100 -c 10 -p register_data.json -T "application/json" http://riegel.canyon.f05.com/auth/register
 ```
 
 hasil:
@@ -432,7 +432,7 @@ pada soal diminta untuk melakukan bench marck dimana hanya perlu menajalankan co
 POST /auth/login 
 
 ```
-ab -n 100 -c 10 -p <(curl -s -X POST -H "Content-Type: application/json" -d '{"username": "Camille", "password": "c4aa45b6-4327-43dd-aed9-301f396267b1"}' http://10.54.4.2/auth/login) -T "application/json" http://10.54.4.2/auth/login
+ab -n 100 -c 10 -p register_data.json -T "application/json" http://riegel.canyon.f05.com/auth/login
 ```
 
 hasil:
@@ -445,7 +445,130 @@ pada soal diminta untuk melakukan bench marck dimana hanya perlu menajalankan co
 GET /me 
 
 ```
-ab -n 100 -c 10 -p <(curl -X GET -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwOi8vMTAuNTQuNC4yL2FwaS9hdXRoL2xvZ2luIiwiaWF0IjoxNzAwMzM3MTAxLCJleHAiOjE3MDAzNDA3MDEsIm5iZiI6MTcwMDMzNzEwMSwianRpIjoiTzI0TDhqSkpONWF1dEFXYyIsInN1YiI6IjEiLCJwcnYiOiIyM2JkNWM4OTQ5ZjYwMGFkYjM5ZTcwMWM0MDA4NzJkYjdhNTk3NmY3In0.8j5i00O7spfAwBB8EgejQkb0L_d0TaYdoUS_NL5KK7c" -H "Content-Type: application/json" http://10.54.4.2/api/me) -T "application/json" http://10.54.4.2/api/me
+ab -n 100 -c 10 -p output_login.json -T "application/json" http://riegel.canyon.f05.com/api/me
+```
+
+untuk mendapatkan ```output_login.json``` kita perlu menjalankan script berikut, dimana untuk mengambil semua token user dan dimasukkan kedalam file
+
+Pertama kita melakukan pendaftaran terlebih dauhulu dengan script berikut
+```
+#!/bin/bash
+apt install jq -y
+
+# Check if the file exists
+file_path="register_data.json"
+
+if [ ! -f "$file_path" ]; then
+    echo "File not found: $file_path"
+    exit 1
+fi
+
+# Read data from the file
+json_data=$(cat "$file_path")
+
+# Extract username and password values
+usernames=($(echo "$json_data" | jq -r '.[].username'))
+passwords=($(echo "$json_data" | jq -r '.[].password'))
+
+# Declare an array to store the tokens
+tokens_array=()
+
+# Iterate through the arrays and print username and password
+for ((i=0; i<${#usernames[@]}; i++)); do
+    echo "Username: ${usernames[i]}"
+    echo "Password: ${passwords[i]}"
+
+    # Make curl request and save output to a variable
+    curl_output=$(curl -X POST -H "Content-Type: application/json" -d "{\"username\": \"${usernames[i]}\", \"password\": \"${passwords[i]}\"}" http://riegel.canyon.f05.com/api/auth/register)
+
+    # Check for curl errors
+    if [ $? -ne 0 ]; then
+        echo "Curl request failed for ${usernames[i]}"
+        continue
+    fi
+
+    # Debug: Print curl output
+    echo "Curl Output: $curl_output"
+
+    # Extract the token from curl output and add it to the tokens array
+    token=$(echo "$curl_output" | jq -r '.token')
+    tokens_array+=("{\"token\":\"$token\"}")
+
+done
+
+# Convert the tokens array to a JSON array and save it to a file
+echo "[" > output_register.json
+for ((i=0; i<${#tokens_array[@]}; i++)); do
+    if [ $i -eq $((${#tokens_array[@]}-1)) ]; then
+        # If it's the last element, don't append a comma
+        echo "${tokens_array[i]}" >> output_register.json
+    else
+        # For other elements, append a comma and newline
+        echo "${tokens_array[i]}," >> output_register.json
+    fi
+done
+echo "]" >> output_register.json
+```
+
+kemdian jalankan script berikut agar mendapatkan ```output_login.json``` 
+
+```
+#!/bin/bash
+apt install jq -y
+
+# Check if the file exists
+file_path="register_data.json"
+
+if [ ! -f "$file_path" ]; then
+    echo "File not found: $file_path"
+    exit 1
+fi
+
+# Read data from the file
+json_data=$(cat "$file_path")
+
+# Extract username and password values
+usernames=($(echo "$json_data" | jq -r '.[].username'))
+passwords=($(echo "$json_data" | jq -r '.[].password'))
+
+# Declare an array to store the tokens
+tokens_array=()
+
+# Iterate through the arrays and print username and password
+for ((i=0; i<${#usernames[@]}; i++)); do
+    echo "Username: ${usernames[i]}"
+    echo "Password: ${passwords[i]}"
+
+    # Make curl request and save output to a variable
+    curl_output=$(curl -X POST -H "Content-Type: application/json" -d "{\"username\": \"${usernames[i]}\", \"password\": \"${passwords[i]}\"}" http://riegel.canyon.f05.com/api/auth/login)
+
+    # Check for curl errors
+    if [ $? -ne 0 ]; then
+        echo "Curl request failed for ${usernames[i]}"
+        continue
+    fi
+
+    # Debug: Print curl output
+    echo "Curl Output: $curl_output"
+
+    # Extract the token from curl output and add it to the tokens array
+    token=$(echo "$curl_output" | jq -r '.token')
+    tokens_array+=("{\"token\":\"$token\"}")
+
+done
+
+# Convert the tokens array to a JSON array and save it to a file
+echo "[" > output_login.json
+for ((i=0; i<${#tokens_array[@]}; i++)); do
+    if [ $i -eq $((${#tokens_array[@]}-1)) ]; then
+        # If it's the last element, don't append a comma
+        echo "${tokens_array[i]}" >> output_login.json
+    else
+        # For other elements, append a comma and newline
+        echo "${tokens_array[i]}," >> output_login.json
+    fi
+done
+echo "]" >> output_login.json
 ```
 
 hasil:
